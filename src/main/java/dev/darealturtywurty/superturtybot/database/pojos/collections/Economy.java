@@ -39,6 +39,7 @@ public class Economy {
     private long totalBetWin;
 
     private List<ShopItem> shopItems = new ArrayList<>();
+    private List<ShopItem> shopItemsOnSale = new ArrayList<>();
     private List<Loan> loans = new ArrayList<>();
     private List<Property> properties = new ArrayList<>();
 
