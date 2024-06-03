@@ -54,7 +54,7 @@ public class ShopCommand extends EconomyCommand {
 
     @Override
     public String getDescription() {
-        return "Access the shop to view, buy, and sell items!";
+        return "Access the shop to view, buy, sell, and view all your items!";
     }
 
     @Override
@@ -69,7 +69,7 @@ public class ShopCommand extends EconomyCommand {
 
     @Override
     public String getHowToUse() {
-        return "/shop view <user>\n/shop buy <item_id>\n/shop sell <item_id> <amount>";
+        return "/shop view <user>\n/shop buy <item_id>\n/shop sell <item_id> <amount>\n/shop list";
     }
 
     @Override
