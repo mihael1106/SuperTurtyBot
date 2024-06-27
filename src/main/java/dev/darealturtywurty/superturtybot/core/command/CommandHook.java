@@ -108,17 +108,17 @@ public class CommandHook extends ListenerAdapter {
         if (devGuild != null) {
             IS_DEV_MODE = true;
         }
-
-//        if (!isDevMode()) {
-//            AutoModerator.INSTANCE.initialize();
-//        }
     }
 
-    private static void sendStartupMessage(@Nullable TextChannel channel) {
+    private static void sendStartupMessage(@Nullable TextChannel channel, boolean shouldSendChangelog) {
         if (channel == null) return;
 
-        String changelog = ChangelogFetcher.INSTANCE.appendChangelog(STARTUP_MESSAGE);
-        channel.sendMessage(changelog).queue();
+        if(shouldSendChangelog) {
+            String changelog = ChangelogFetcher.INSTANCE.appendChangelog(STARTUP_MESSAGE);
+            channel.sendMessage(changelog).queue();
+        } else {
+            channel.sendMessage(STARTUP_MESSAGE).queue();
+        }
     }
 
     private static void printCommandList(JDA jda, Set<CoreCommand> cmds) {
@@ -204,6 +204,7 @@ public class CommandHook extends ListenerAdapter {
         });
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     protected static void registerCommand(CoreCommand cmd, CommandListUpdateAction updates) {
         if (cmd.types.slash()) {
             final SlashCommandData data = Commands.slash(cmd.getName(), cmd.getDescription().substring(0, Math.min(cmd.getDescription().length(), 100)));
@@ -414,6 +415,7 @@ public class CommandHook extends ListenerAdapter {
         commands.add(new LoanCommand());
         commands.add(new DonateCommand());
         // commands.add(new PropertyCommand());
+        commands.add(new HeistCommand());
 
         return commands;
     }
@@ -469,7 +471,7 @@ public class CommandHook extends ListenerAdapter {
         }
 
         if (config.isShouldSendStartupMessage()) {
-            sendStartupMessage(generalChannel);
+            sendStartupMessage(generalChannel, config.isShouldSendChangelog());
         }
 
         if (this.commands.isEmpty())

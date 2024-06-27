@@ -19,14 +19,13 @@ import net.dean.jraw.oauth.OAuthHelper;
 import net.dean.jraw.references.SubredditReference;
 import net.dean.jraw.tree.RootCommentNode;
 import net.dv8tion.jda.api.EmbedBuilder;
+import okhttp3.OkHttpClient;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLConnection;
+import java.net.*;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -40,7 +39,15 @@ public final class RedditUtils {
             final var oAuthCreds = Credentials.userless(Environment.INSTANCE.redditClientId().get(),
                     Environment.INSTANCE.redditClientSecret().get(), UUID.randomUUID());
             final var userAgent = new UserAgent("bot", "dev.darealturtywurty.superturtybot" + (CommandHook.isDevMode() ? ".dev" : ""), "1.0", "TurtyWurty");
-            REDDIT = OAuthHelper.automatic(new OkHttpNetworkAdapter(userAgent), oAuthCreds);
+
+            var builder = new OkHttpClient.Builder();
+            if(Environment.INSTANCE.redditProxyHost().isPresent() && Environment.INSTANCE.redditProxyPort().isPresent()){
+                var proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(Environment.INSTANCE.redditProxyHost().get(), Environment.INSTANCE.redditProxyPort().get()));
+                builder.proxy(proxy);
+            }
+
+            OkHttpClient client = builder.build();
+            REDDIT = OAuthHelper.automatic(new OkHttpNetworkAdapter(userAgent, client), oAuthCreds);
             REDDIT.setLogHttp(true);
         }
     }
@@ -49,18 +56,7 @@ public final class RedditUtils {
         throw new IllegalAccessError("Cannot access private constructor!");
     }
 
-    @Nullable
-    public static Either<EmbedBuilder, Collection<String>> constructEmbed(boolean requireMedia, String... subreddits) {
-        if (subreddits.length < 1) return null;
-
-        final SubredditReference subreddit = getRandomSubreddit(subreddits);
-        RootCommentNode post = findValidPost(subreddit, subreddits);
-        int attempts = 0;
-        while (post == null) {
-            post = findValidPost(subreddit, subreddits);
-            if (attempts++ > 10) return null;
-        }
-
+    public static Either<EmbedBuilder, Collection<String>> constructEmbed(boolean requireMedia, RootCommentNode post) {
         var embed = new EmbedBuilder();
         String title = new String(Charsets.UTF_8.encode(post.getSubject().getTitle()).array());
         embed.setTitle(title.length() > 256 ? title.substring(0, 256) : title);
@@ -114,12 +110,7 @@ public final class RedditUtils {
         }
 
         if (requireMedia) {
-            post = findValidPost(subreddit, subreddits);
-            if (post == null)
-                return null;
-
-            mediaURL = post.getSubject().getUrl().isBlank() ? post.getSubject().getThumbnail() : post.getSubject()
-                    .getUrl();
+            mediaURL = post.getSubject().getUrl().isBlank() ? post.getSubject().getThumbnail() : post.getSubject().getUrl();
 
             if (mediaURL == null || mediaURL.isBlank())
                 return null;
@@ -148,6 +139,21 @@ public final class RedditUtils {
 
         embed.setTimestamp(Instant.now());
         return Either.left(embed);
+    }
+
+    @Nullable
+    public static Either<EmbedBuilder, Collection<String>> constructEmbed(boolean requireMedia, String... subreddits) {
+        if (subreddits.length < 1) return null;
+
+        final SubredditReference subreddit = getRandomSubreddit(subreddits);
+        RootCommentNode post = findValidPost(subreddit, subreddits);
+        int attempts = 0;
+        while (post == null) {
+            post = findValidPost(subreddit, subreddits);
+            if (attempts++ > 10) return null;
+        }
+
+        return constructEmbed(requireMedia, post);
     }
 
     @Nullable
@@ -180,7 +186,7 @@ public final class RedditUtils {
     @NotNull
     public static SubredditReference getRandomSubreddit(String... subreddits) {
         return Stream.of(subreddits).skip(ThreadLocalRandom.current().nextInt(subreddits.length)).map(subreddit -> {
-            final SubredditReference reference = REDDIT.subreddit(subreddit);
+            final SubredditReference reference = getSubreddit(subreddit);
             try {
                 reference.about();
                 return reference;

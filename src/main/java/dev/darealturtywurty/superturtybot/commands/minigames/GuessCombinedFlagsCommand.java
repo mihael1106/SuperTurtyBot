@@ -3,8 +3,6 @@ package dev.darealturtywurty.superturtybot.commands.minigames;
 import dev.darealturtywurty.superturtybot.core.api.ApiHandler;
 import dev.darealturtywurty.superturtybot.core.api.pojo.Region;
 import dev.darealturtywurty.superturtybot.core.api.request.RegionExcludeRequestData;
-import dev.darealturtywurty.superturtybot.core.command.CommandCategory;
-import dev.darealturtywurty.superturtybot.core.command.CoreCommand;
 import dev.darealturtywurty.superturtybot.core.command.SubcommandCommand;
 import dev.darealturtywurty.superturtybot.core.util.Constants;
 import dev.darealturtywurty.superturtybot.core.util.function.Either;
@@ -33,7 +31,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 
 public class GuessCombinedFlagsCommand extends SubcommandCommand {
     private static final Map<Long, Game> GAMES = new HashMap<>();
@@ -155,38 +152,37 @@ public class GuessCombinedFlagsCommand extends SubcommandCommand {
 
         String toSend = String.format("Guess the regions that make up the combined flag! (There are %d regions)",
                 numberOfRegions);
-        event.getHook().editOriginal(toSend).setFiles(upload).queue(message -> {
-            message.createThreadChannel(event.getUser().getName() + "'s game").queue(thread -> {
-                Either<List<Region>, HttpStatus> matchingRegions = ApiHandler.getAllRegions(data);
-                if (matchingRegions.isRight()) {
-                    Constants.LOGGER.error("An error occurred while trying to get all regions! Status code: {}",
-                            matchingRegions.getRight().getCode());
-                    event.getHook().sendMessage("❌ An error occurred while trying to get all regions!").queue(ignored -> thread.delete().queue());
-                    return;
-                }
+        event.getHook().editOriginal(toSend).setFiles(upload).queue(message ->
+                message.createThreadChannel(event.getUser().getName() + "'s game").queue(thread -> {
+                    Either<List<Region>, HttpStatus> matchingRegions = ApiHandler.getAllRegions(data);
+                    if (matchingRegions.isRight()) {
+                        Constants.LOGGER.error("An error occurred while trying to get all regions! Status code: {}",
+                                matchingRegions.getRight().getCode());
+                        event.getHook().sendMessage("❌ An error occurred while trying to get all regions!").queue(ignored -> thread.delete().queue());
+                        return;
+                    }
 
-                var game = new Game(regions, event.getGuild().getIdLong(),
-                        event.getChannel().getIdLong(), thread.getIdLong(), message.getIdLong(),
-                        event.getUser().getIdLong(), matchingRegions.getLeft());
+                    var game = new Game(regions, event.getGuild().getIdLong(),
+                            event.getChannel().getIdLong(), thread.getIdLong(), message.getIdLong(),
+                            event.getUser().getIdLong(), matchingRegions.getLeft());
 
-                GAMES.put(message.getIdLong(), game);
+                    GAMES.put(message.getIdLong(), game);
 
-                message.editMessageComponents(
-                                ActionRow.of(Button.danger("combined-flags-" + message.getId(), Emoji.fromFormatted("❌"))))
-                        .queue();
+                    message.editMessageComponents(
+                                    ActionRow.of(Button.danger("combined-flags-" + message.getId(), Emoji.fromFormatted("❌"))))
+                            .queue();
 
-                thread.sendMessage("✅ Game started! " + event.getUser().getAsMention()).queue();
+                    thread.sendMessage("✅ Game started! " + event.getUser().getAsMention()).queue();
 
-                try {
-                    boas.close();
-                    upload.close();
-                } catch (IOException exception) {
-                    Constants.LOGGER.error(
-                            "An error occurred while trying to close the ByteArrayOutputStream or FileUpload!",
-                            exception);
-                }
-            });
-        });
+                    try {
+                        boas.close();
+                        upload.close();
+                    } catch (IOException exception) {
+                        Constants.LOGGER.error(
+                                "An error occurred while trying to close the ByteArrayOutputStream or FileUpload!",
+                                exception);
+                    }
+                }));
     }
 
     @Override

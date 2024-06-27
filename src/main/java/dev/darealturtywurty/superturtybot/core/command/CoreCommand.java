@@ -220,27 +220,37 @@ public abstract class CoreCommand extends ListenerAdapter implements BotCommand 
     }
 
     protected void runGuildMessage(MessageReceivedEvent event) {
+        // NO-OP
     }
 
     protected void runMessageCtx(MessageContextInteractionEvent event) {
+        // NO-OP
     }
 
     protected void runNormalMessage(MessageReceivedEvent event) {
+        // NO-OP
     }
 
     protected void runPrivateMessage(MessageReceivedEvent event) {
+        // NO-OP
     }
 
     protected void runSlash(SlashCommandInteractionEvent event) {
+        // NO-OP
     }
 
     protected void runThreadMessage(MessageReceivedEvent event) {
+        // NO-OP
     }
 
     protected void runUserCtx(UserContextInteractionEvent event) {
+        // NO-OP
     }
 
     private boolean validateRatelimit(long user, Consumer<String> ratelimitResponse) {
+        if(user == Environment.INSTANCE.ownerId().orElse(-1L))
+            return true;
+
         Pair<TimeUnit, Long> ratelimit = getRatelimit();
         if (ratelimit.getRight() > 0) {
             long length = TimeUnit.MILLISECONDS.convert(ratelimit.getRight(), ratelimit.getLeft());

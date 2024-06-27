@@ -16,13 +16,14 @@ public class Economy {
     private long guild;
     private long user;
 
-    private int wallet;
-    private int bank;
+    private long wallet;
+    private long bank;
 
     private long nextRob;
     private long nextWork;
     private long nextCrime;
     private long nextSexWork;
+    private long nextHeist;
 
     private long nextDaily;
     private long nextWeekly;
@@ -38,6 +39,13 @@ public class Economy {
     private long totalBetLoss;
     private long totalBetWin;
 
+    private int crimeLevel;
+    private int heistLevel = 1;
+    private int totalHeists;
+    private long totalCrimes;
+    private long totalSuccessfulCrimes;
+    private long totalCaughtCrimes;
+
     private List<ShopItem> shopItems = new ArrayList<>();
     private List<ShopItem> shopItemsOnSale = new ArrayList<>();
     private List<Loan> loans = new ArrayList<>();
@@ -52,19 +60,19 @@ public class Economy {
         this.user = user;
     }
 
-    public void addBank(int amount) {
+    public void addBank(long amount) {
         this.bank += amount;
     }
 
-    public void addWallet(int amount) {
+    public void addWallet(long amount) {
         this.wallet += amount;
     }
 
-    public void removeBank(int amount) {
+    public void removeBank(long amount) {
         this.bank -= amount;
     }
 
-    public void removeWallet(int amount) {
+    public void removeWallet(long amount) {
         this.wallet -= amount;
     }
 

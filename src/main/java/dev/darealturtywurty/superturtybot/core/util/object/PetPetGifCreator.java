@@ -1,6 +1,6 @@
 package dev.darealturtywurty.superturtybot.core.util.object;
 
-import dev.darealturtywurty.superturtybot.core.util.FileUtils;
+import dev.darealturtywurty.superturtybot.TurtyBot;
 import lombok.Getter;
 
 import javax.imageio.stream.FileImageOutputStream;
@@ -19,11 +19,11 @@ public class PetPetGifCreator {
 
     static {
         PET_PET_FRAMES = new ArrayList<>();
-        PET_PET_FRAMES.add(FileUtils.loadImage("petpet/frame_0.png"));
-        PET_PET_FRAMES.add(FileUtils.loadImage("petpet/frame_1.png"));
-        PET_PET_FRAMES.add(FileUtils.loadImage("petpet/frame_2.png"));
-        PET_PET_FRAMES.add(FileUtils.loadImage("petpet/frame_3.png"));
-        PET_PET_FRAMES.add(FileUtils.loadImage("petpet/frame_4.png"));
+        PET_PET_FRAMES.add(TurtyBot.loadImage("petpet/frame_0.png"));
+        PET_PET_FRAMES.add(TurtyBot.loadImage("petpet/frame_1.png"));
+        PET_PET_FRAMES.add(TurtyBot.loadImage("petpet/frame_2.png"));
+        PET_PET_FRAMES.add(TurtyBot.loadImage("petpet/frame_3.png"));
+        PET_PET_FRAMES.add(TurtyBot.loadImage("petpet/frame_4.png"));
     }
 
     private final Path outputPath;
@@ -36,7 +36,7 @@ public class PetPetGifCreator {
         this.inputImage = inputImage;
 
         try {
-            this.writer = new GifSequenceWriter(new FileImageOutputStream(outputPath.toFile()), BufferedImage.TYPE_INT_ARGB, DELAY, true); // delay was not being used so i set it to be used here
+            this.writer = new GifSequenceWriter(new FileImageOutputStream(outputPath.toFile()), BufferedImage.TYPE_INT_ARGB, DELAY, true); // delay was not being used so I set it to be used here
         } catch (IOException exception) {
             throw new IllegalStateException("Could not create GifSequenceWriter!", exception);
         }

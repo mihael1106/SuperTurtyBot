@@ -5,7 +5,6 @@ import dev.darealturtywurty.superturtybot.TurtyBot;
 import dev.darealturtywurty.superturtybot.commands.fun.WouldYouRatherCommand;
 import dev.darealturtywurty.superturtybot.commands.util.TopicCommand;
 import dev.darealturtywurty.superturtybot.core.ShutdownHooks;
-import dev.darealturtywurty.superturtybot.core.api.pojo.WouldYouRather;
 import dev.darealturtywurty.superturtybot.core.util.Constants;
 import dev.darealturtywurty.superturtybot.database.Database;
 import dev.darealturtywurty.superturtybot.database.pojos.collections.ChatReviver;
@@ -113,7 +112,7 @@ public class ChatRevivalManager extends ListenerAdapter {
             Database.getDatabase().chatRevivers.replaceOne(Filters.eq("guild", guild.getIdLong()), chatReviver);
 
             textChannel.sendMessage("🎨 The word for today's drawing is: **" + word + "**! Happy drawing! 🎨").queue();
-        } catch (IOException exception) {
+        } catch (IllegalStateException exception) {
             textChannel.sendMessage("❌ Uh oh! Something went wrong! Unable to do the drawing today! Please report this to the bot owner!").queue();
             Constants.LOGGER.error("❌ Unable to get available words for drawing!", exception);
         }
@@ -204,7 +203,7 @@ public class ChatRevivalManager extends ListenerAdapter {
         }
     }
 
-    private static List<String> getAvailableWords(ChatReviver chatReviver) throws IOException {
+    private static List<String> getAvailableWords(ChatReviver chatReviver) throws IllegalStateException {
         List<String> words = getDrawingWords();
         words.removeAll(chatReviver.getUsedDrawings());
         return words;

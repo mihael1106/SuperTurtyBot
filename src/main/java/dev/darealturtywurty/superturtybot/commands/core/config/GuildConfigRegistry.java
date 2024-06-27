@@ -125,6 +125,7 @@ public class GuildConfigRegistry {
                     (config, value) -> config.setStarboardMediaOnly(Boolean.parseBoolean(value))).valueFromConfig(
                     GuildData::isStarboardMediaOnly).build());
 
+    @SuppressWarnings("ConstantValue")
     private static final GuildConfigOption STAR_EMOJI = GUILD_CONFIG_OPTIONS.register("star_emoji",
             new GuildConfigOption.Builder().dataType(DataType.STRING).serializer(GuildData::setStarEmoji)
                     .valueFromConfig(GuildData::getStarEmoji).validator(
@@ -369,4 +370,9 @@ public class GuildConfigRegistry {
                     .serializer((config, value) -> config.setWelcomeChannel(Long.parseLong(value)))
                     .valueFromConfig(GuildData::getWelcomeChannel)
                     .validator(Validators.TEXT_CHANNEL_VALIDATOR).build());
+
+    private static final GuildConfigOption SHOULD_SEND_CHANGELOG = GUILD_CONFIG_OPTIONS.register("should_send_changelog",
+            new GuildConfigOption.Builder().dataType(DataType.BOOLEAN)
+                    .serializer((config, value) -> config.setShouldSendChangelog(Boolean.parseBoolean(value)))
+                    .valueFromConfig(GuildData::isShouldSendChangelog).build());
 }
