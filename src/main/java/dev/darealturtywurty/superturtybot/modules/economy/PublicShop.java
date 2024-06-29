@@ -2,11 +2,10 @@ package dev.darealturtywurty.superturtybot.modules.economy;
 
 import lombok.Data;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -17,24 +16,29 @@ public class PublicShop {
 
     public static final PublicShop INSTANCE = new PublicShop();
 
-    private List<ShopItem> featuredItems;
-    private List<ShopItem> newItems;
-    private List<ShopItem> discountItems;
+    private List<ShopItem> dailyItems;
 
     public PublicShop() {
-        this.featuredItems = new ArrayList<>();
-        this.newItems = new ArrayList<>();
-        this.discountItems = new ArrayList<>();
+        this.dailyItems = new ArrayList<>();
     }
 
     public void reloadShop() {
-        this.featuredItems.addAll(List.of(ShopItemRegistry.APPLE, ShopItemRegistry.ORANGE));
-        this.newItems.add(ShopItemRegistry.BANANA);
-        this.discountItems.add(ShopItemRegistry.CHERRY);
+        Hashtable<ShopItem, Integer> randomAmount = new Hashtable<>();
+        Random random = ThreadLocalRandom.current();
+
+        randomAmount.put(ShopItemRegistry.APPLE, random.nextInt(9) + 1);
+        randomAmount.put(ShopItemRegistry.BANANA, random.nextInt(7) + 1);
+        randomAmount.put(ShopItemRegistry.CHERRY, random.nextInt(5) + 1);
+        randomAmount.put(ShopItemRegistry.ORANGE, random.nextInt(3) + 1);
+        for(Map.Entry<ShopItem, Integer> entry : randomAmount.entrySet()) {
+            for(int i = 0; i < entry.getValue(); i++) {
+                this.dailyItems.add(entry.getKey());
+            }
+        }
     }
 
     public boolean isEmpty() {
-        return this.featuredItems.isEmpty() && this.newItems.isEmpty() && this.discountItems.isEmpty();
+        return this.dailyItems.isEmpty();
     }
 
     public static boolean isRunning() {

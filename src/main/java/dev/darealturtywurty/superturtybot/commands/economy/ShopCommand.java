@@ -1,8 +1,7 @@
 package dev.darealturtywurty.superturtybot.commands.economy;
 
 import dev.darealturtywurty.superturtybot.core.util.Constants;
-import dev.darealturtywurty.superturtybot.core.util.FileUtils;
-import dev.darealturtywurty.superturtybot.core.util.discord.PaginatedEmbed;
+import dev.darealturtywurty.superturtybot.core.util.StringUtils;
 import dev.darealturtywurty.superturtybot.database.pojos.collections.Economy;
 import dev.darealturtywurty.superturtybot.database.pojos.collections.GuildData;
 import dev.darealturtywurty.superturtybot.modules.economy.EconomyManager;
@@ -18,18 +17,12 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
-import net.dv8tion.jda.api.utils.FileUpload;
 import org.jetbrains.annotations.NotNull;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.Objects;
 
 public class ShopCommand extends EconomyCommand {
     private static final List<String> SHOP_ITEMS;
@@ -48,8 +41,7 @@ public class ShopCommand extends EconomyCommand {
                         .addOption(OptionType.STRING, "item", "The ID of the item you want to sell", true, true)
                         .addOption(OptionType.BOOLEAN, "instant",
                                 "If the item will just be sold for money or if it will be put up for sale for else to buy it",
-                                false),
-                new SubcommandData("list", "Lists all items you have"));
+                                false));
     }
 
     @Override
@@ -97,40 +89,36 @@ public class ShopCommand extends EconomyCommand {
                         return;
                     }
 
-                    var contents = new PaginatedEmbed.ContentsBuilder();
-                    for (ShopItem item : shop) {
-                        contents.field(item.getImage() + " " + item.getName(),
-                                "ID: " + item.getId() + "\nPrice: " + item.getPrice());
+                    EmbedBuilder builder = new EmbedBuilder();
+                    Hashtable<ShopItem, Integer> amount = countShopItems(shop);
+
+                    for (ShopItem item : amount.keySet()) {
+                        String name = StringUtils.upperSnakeToSpacedPascal(item.getName());
+                        int itemAmount = amount.get(item);
+                        builder.addField(name, """
+                                Amount: %d
+                                Price: %s%d
+                                Combined Price: %s%d""".formatted(
+                                itemAmount,
+                                config.getEconomyCurrency(), item.getPrice(),
+                                config.getEconomyCurrency(), item.getPrice() * itemAmount), false);
                     }
 
-                    PaginatedEmbed paginatedEmbed = new PaginatedEmbed.Builder(10, contents)
-                            .timestamp(Instant.now())
-                            .title("Shop for " + user.getName())
-                            .color(member.getColorRaw())
-                            .footer(user.getName(), member.getEffectiveAvatarUrl())
-                            .authorOnly(event.getUser().getIdLong())
-                            .build(event.getJDA());
-
-                    paginatedEmbed.send(event.getHook());
+                    builder.setTimestamp(Instant.now());
+                    builder.setTitle("Shop for " + user.getName());
+                    builder.setColor(member.getColorRaw());
+                    builder.setFooter(user.getName(), member.getEffectiveAvatarUrl());
+                    event.getHook().sendMessageEmbeds(builder.build()).queue();
                     return;
                 }
 
                 PublicShop shop = EconomyManager.getPublicShop();
-                if (shop.getDiscountItems().isEmpty() && shop.getFeaturedItems().isEmpty() && shop.getNewItems()
-                        .isEmpty()) {
+                if (shop.isEmpty()) {
                     event.getHook().editOriginal("❌ The shop is currently empty, please come back later!").queue();
                     return;
                 }
 
-                try {
-                    var boas = new ByteArrayOutputStream();
-                    ImageIO.write(generateShopImage(), "png", boas);
-                    var upload = FileUpload.fromData(boas.toByteArray(), "shop.png");
-                    event.getHook().sendFiles(upload).queue();
-                } catch (IOException exception) {
-                    event.getHook().editOriginal("❌ An error occurred while generating the shop image!").queue();
-                    Constants.LOGGER.error("❌ An error occurred while generating the shop image!", exception);
-                }
+                event.getHook().sendMessageEmbeds(createShopEmbed(event, guild, shop).build()).queue();
             }
             case "buy" -> {
                 String id = event.getOption("item", null, OptionMapping::getAsString);
@@ -149,6 +137,12 @@ public class ShopCommand extends EconomyCommand {
                 }
 
                 if(user == null) {
+                    PublicShop shop = EconomyManager.getPublicShop();
+                    if(!shop.getDailyItems().contains(item)) {
+                        event.getHook().editOriginal("❌ That item is currently not available, please come back later!").queue();
+                        return;
+                    }
+                    shop.getDailyItems().remove(item);
                     localAccount.removeBank(price);
                     localAccount.getShopItems().add(item);
                     EconomyManager.updateAccount(localAccount);
@@ -194,31 +188,42 @@ public class ShopCommand extends EconomyCommand {
                     event.getHook().editOriginal("✅ Successfully put up item for sale!").queue();
                 }
             }
-            case "list" -> {
-                final EmbedBuilder builder = new EmbedBuilder();
-                builder.setTitle("Item List");
-
-                Economy account = EconomyManager.getOrCreateAccount(guild, event.getUser());
-                List<ShopItem> shop = account.getShopItems();
-                Hashtable<ShopItem, Integer> amount = new Hashtable<>();
-                for(ShopItem item : shop) {
-                    if(item == null) {
-                        Constants.LOGGER.warn("An item should not be null");
-                        continue;
-                    }
-                    Integer integer = amount.get(item);
-                    if(integer == null)
-                        integer = 0;
-                    amount.put(item, integer + 1);
-                }
-                for(ShopItem item : amount.keySet()) {
-                    builder.addField(item.getName(), String.valueOf(amount.get(item)), false);
-                }
-                builder.setFooter("Requested by " + event.getUser().getName(), event.getUser().getEffectiveAvatarUrl());
-
-                event.getHook().sendMessageEmbeds(builder.build()).queue();
-            }
         }
+    }
+
+    private EmbedBuilder createShopEmbed(SlashCommandInteractionEvent event, Guild guild, PublicShop shop) {
+        EmbedBuilder builder = new EmbedBuilder();
+        Hashtable<ShopItem, Integer> amount = countShopItems(shop.getDailyItems());
+
+        StringBuilder sb = new StringBuilder();
+        for(ShopItem item : amount.keySet()) {
+            String name = StringUtils.upperSnakeToSpacedPascal(item.getName());
+            sb.append("%s x%d".formatted(name, amount.get(item))).append("\n");
+        }
+        builder.setDescription(sb.toString());
+
+        User user = event.getUser();
+        Member member = guild.getMember(user);
+        builder.setTimestamp(Instant.now());
+        builder.setTitle("Daily shop items");
+        builder.setColor(member.getColorRaw());
+        builder.setFooter(user.getName(), member.getEffectiveAvatarUrl());
+        return builder;
+    }
+
+    public Hashtable<ShopItem, Integer> countShopItems(List<ShopItem> itemList) {
+        Hashtable<ShopItem, Integer> amount = new Hashtable<>();
+        for(ShopItem item : itemList) {
+            if(item == null) {
+                Constants.LOGGER.warn("An item should not be null");
+                continue;
+            }
+            Integer integer = amount.get(item);
+            if(integer == null)
+                integer = 0;
+            amount.put(item, integer + 1);
+        }
+        return amount;
     }
 
     private ShopItem getShopItem(String id) {
@@ -239,62 +244,12 @@ public class ShopCommand extends EconomyCommand {
         if((subcommand.equalsIgnoreCase("buy") || (subcommand.equalsIgnoreCase("sell"))
                 && event.getFocusedOption().getName().equalsIgnoreCase("item"))) {
 
-            final List<String> allowed = SHOP_ITEMS.stream()
+            final List<String> allowed = new ArrayList<>(SHOP_ITEMS.stream()
                     .filter(str -> str.toLowerCase()
-                    .contains(event.getFocusedOption().getValue().toLowerCase()))
-                    .toList();
+                            .contains(event.getFocusedOption().getValue().toLowerCase()))
+                    .toList());
+            allowed.replaceAll(StringUtils::upperSnakeToSpacedPascal);
             event.replyChoiceStrings(allowed).queue();
         }
-    }
-
-    private static BufferedImage generateShopImage() throws IOException {
-        PublicShop shop = EconomyManager.getPublicShop();
-
-        BufferedImage image = FileUtils.loadImage("economy/shop.png");
-        if (image == null)
-            throw new IOException("Could not find shop image!");
-
-        Graphics2D g2d = image.createGraphics();
-
-        g2d.setColor(Color.RED);
-        g2d.fillRect(0, image.getHeight() / 2 - 5, image.getWidth(), 10);
-        g2d.setColor(Color.GREEN);
-        g2d.fillRect(image.getWidth() / 2 - 5, 0, 10, image.getHeight());
-
-        g2d.setFont(g2d.getFont().deriveFont(500f));
-        g2d.setColor(Color.BLACK);
-        g2d.drawString("New", image.getWidth() / 2 - g2d.getFontMetrics().stringWidth("New") / 2, 400);
-
-        g2d.setFont(g2d.getFont().deriveFont(250f));
-
-        List<ShopItem> newItems = shop.getFeaturedItems();
-
-        int totalWidth = 0;
-        for (ShopItem item : newItems) {
-            String name = item.getName();
-            totalWidth += Math.max(g2d.getFontMetrics().stringWidth(name), 750) + 50;
-        }
-
-        int x = (image.getWidth() - totalWidth) / 2 + 50;
-        for (ShopItem item : newItems) {
-            String name = item.getName();
-            BufferedImage img = Objects.requireNonNull(FileUtils.loadImage(item.getImage()));
-
-            g2d.setColor(Color.BLACK);
-            g2d.fillRect(x - 5,
-                    545,
-                    Math.max(g2d.getFontMetrics().stringWidth(name) + 5, 755),
-                    805 + g2d.getFontMetrics().getHeight());
-
-            g2d.drawImage(img, x, 550, 750, 750, null);
-
-            g2d.setColor(Color.WHITE);
-            g2d.drawString(name, x + 375 - g2d.getFontMetrics().stringWidth(name) / 2, 1500);
-
-            x += Math.max(g2d.getFontMetrics().stringWidth(name), 750) + 50;
-        }
-
-        g2d.dispose();
-        return image;
     }
 }
